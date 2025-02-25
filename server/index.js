@@ -3,6 +3,7 @@ const http = require("http");
 const socketIo = require("socket.io");
 const mongoose = require("mongoose");
 const cors = require("cors");
+require("dotenv").config();
 
 const app = express();
 const server = http.createServer(app);
@@ -11,16 +12,12 @@ const io = socketIo(server, { cors: { origin: "*" } });
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection
+// MongoDB Connection (remove deprecated options)
 mongoose
-  .connect("mongodb://localhost:27017/CodeBlocks", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URI || "mongodb://localhost:27017/CodeBlocks")
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Code Block Schema
 const codeBlockSchema = new mongoose.Schema({
   name: { type: String, required: true },
   initialCode: { type: String, required: true },
@@ -28,17 +25,13 @@ const codeBlockSchema = new mongoose.Schema({
 });
 
 const CodeBlock = mongoose.model("CodeBlock", codeBlockSchema, "CodeBlocks");
-
-// Store state for each code block
 const codeblockStates = {};
 
-// API to get list of code blocks
 app.get("/codeblocks", async (req, res) => {
   const codeblocks = await CodeBlock.find().select("_id name");
   res.json(codeblocks);
 });
 
-// Socket.IO logic
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
@@ -51,7 +44,7 @@ io.on("connection", (socket) => {
         mentorId: null,
         currentCode: codeblock.initialCode,
         solution: codeblock.solution,
-        messages: [], // Add messages array to store chat history (optional)
+        messages: [],
       };
     }
 
@@ -72,7 +65,7 @@ io.on("connection", (socket) => {
       role,
       currentCode: state.currentCode,
       numStudents,
-      messages: state.messages, // Send chat history to new joiner
+      messages: state.messages,
     });
 
     io.to(codeblockId).emit("updateStudents", numStudents);
@@ -93,7 +86,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // New chat event handler
   socket.on("sendMessage", ({ codeblockId, message }) => {
     console.log(`Message in ${codeblockId} from ${socket.id}: ${message}`);
     const state = codeblockStates[codeblockId];
@@ -102,8 +94,8 @@ io.on("connection", (socket) => {
       message,
       timestamp: new Date().toISOString(),
     };
-    state.messages.push(chatMessage); // Store message (optional persistence)
-    io.to(codeblockId).emit("newMessage", chatMessage); // Broadcast to room
+    state.messages.push(chatMessage);
+    io.to(codeblockId).emit("newMessage", chatMessage);
   });
 
   socket.on("disconnect", async () => {

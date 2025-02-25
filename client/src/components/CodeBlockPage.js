@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
+import "../styles/CodeBlockPage.css"; // Updated import path
 
 const socket = io("http://localhost:5000");
 
@@ -42,7 +43,6 @@ function CodeBlockPage() {
       setMessages((prev) => [...prev, message]);
     });
 
-    // Cleanup: Emit leaveRoom when component unmounts (navigating away)
     return () => {
       socket.emit("leaveRoom", id);
       socket.off("init");
@@ -79,56 +79,67 @@ function CodeBlockPage() {
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>Code Block</h2>
-      <p>Role: {role}</p>
-      <p>Number of Students: {numStudents}</p>
-      <CodeMirror
-        value={code}
-        height="200px"
-        extensions={[javascript()]}
-        onChange={handleCodeChange}
-        readOnly={role === "mentor"}
-        theme="dark"
-      />
-      {showSmiley && (
-        <div
-          style={{ fontSize: "50px", textAlign: "center", marginTop: "20px" }}
-        >
-          😊
+    <div className="codeblock-container">
+      <div className="editor-section">
+        <h2 className="editor-title">Code Block</h2>
+        <div className="editor-wrapper">
+          <CodeMirror
+            value={code}
+            height="400px"
+            extensions={[javascript()]}
+            onChange={handleCodeChange}
+            readOnly={role === "mentor"}
+            theme="dark"
+            className="code-mirror"
+          />
         </div>
-      )}
-      <div style={{ marginTop: "20px" }}>
-        <h3>Chat</h3>
-        <div
-          style={{
-            maxHeight: "150px",
-            overflowY: "auto",
-            border: "1px solid #ccc",
-            padding: "10px",
-            marginBottom: "10px",
-          }}
-        >
-          {messages.map((msg, index) => (
-            <div key={index}>
-              <strong>
-                {msg.id === socket.id ? "You" : msg.id.slice(0, 4)}:
-              </strong>{" "}
-              {msg.message}{" "}
-              <em>({new Date(msg.timestamp).toLocaleTimeString()})</em>
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
+        {showSmiley && <div className="smiley">😊</div>}
+      </div>
+
+      <div className="info-chat-section">
+        <div className="info-panel">
+          <p className="info-text">
+            <strong>Role:</strong> {role}
+          </p>
+          <p className="info-text">
+            <strong>Students:</strong> {numStudents}
+          </p>
         </div>
-        <input
-          type="text"
-          value={chatInput}
-          onChange={(e) => setChatInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Type a message..."
-          style={{ width: "70%", marginRight: "10px" }}
-        />
-        <button onClick={handleSendMessage}>Send</button>
+        <div className="chat-panel">
+          <h3 className="chat-title">Chat</h3>
+          <div className="chat-messages">
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                className={`chat-message ${
+                  msg.id === socket.id ? "own-message" : "other-message"
+                }`}
+              >
+                <strong>
+                  {msg.id === socket.id ? "You" : msg.id.slice(0, 4)}:
+                </strong>{" "}
+                {msg.message}
+                <div className="chat-timestamp">
+                  {new Date(msg.timestamp).toLocaleTimeString()}
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+          <div className="chat-input-section">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type a message..."
+              className="chat-input"
+            />
+            <button onClick={handleSendMessage} className="chat-send-button">
+              Send
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

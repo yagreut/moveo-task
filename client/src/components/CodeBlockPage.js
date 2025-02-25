@@ -13,9 +13,9 @@ function CodeBlockPage() {
   const [code, setCode] = useState("");
   const [numStudents, setNumStudents] = useState(0);
   const [showSmiley, setShowSmiley] = useState(false);
-  const [messages, setMessages] = useState([]); // Store chat messages
-  const [chatInput, setChatInput] = useState(""); // Input field value
-  const messagesEndRef = useRef(null); // For auto-scrolling
+  const [messages, setMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     socket.emit("join", id);
@@ -24,7 +24,7 @@ function CodeBlockPage() {
       setRole(role);
       setCode(currentCode);
       setNumStudents(numStudents);
-      setMessages(messages || []); // Load initial messages
+      setMessages(messages || []);
     });
 
     socket.on("codeUpdated", (newCode) => setCode(newCode));
@@ -42,7 +42,9 @@ function CodeBlockPage() {
       setMessages((prev) => [...prev, message]);
     });
 
+    // Cleanup: Emit leaveRoom when component unmounts (navigating away)
     return () => {
+      socket.emit("leaveRoom", id);
       socket.off("init");
       socket.off("codeUpdated");
       socket.off("updateStudents");
@@ -53,7 +55,6 @@ function CodeBlockPage() {
   }, [id, navigate]);
 
   useEffect(() => {
-    // Auto-scroll to the latest message
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -67,7 +68,7 @@ function CodeBlockPage() {
   const handleSendMessage = () => {
     if (chatInput.trim()) {
       socket.emit("sendMessage", { codeblockId: id, message: chatInput });
-      setChatInput(""); // Clear input after sending
+      setChatInput("");
     }
   };
 

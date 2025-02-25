@@ -12,7 +12,6 @@ const io = socketIo(server, { cors: { origin: "*" } });
 app.use(cors());
 app.use(express.json());
 
-// MongoDB Connection (remove deprecated options)
 mongoose
   .connect(process.env.MONGO_URI || "mongodb://localhost:27017/CodeBlocks")
   .then(() => console.log("MongoDB connected"))
@@ -61,6 +60,9 @@ io.on("connection", (socket) => {
 
     const numStudents = state.mentorId ? numClients - 1 : numClients;
 
+    console.log(
+      `User ${socket.id} joined ${codeblockId} as ${role}, students: ${numStudents}`
+    );
     socket.emit("init", {
       role,
       currentCode: state.currentCode,
@@ -98,16 +100,39 @@ io.on("connection", (socket) => {
     io.to(codeblockId).emit("newMessage", chatMessage);
   });
 
+  socket.on("leaveRoom", async (codeblockId) => {
+    console.log(`Client ${socket.id} leaving room ${codeblockId}`);
+    const state = codeblockStates[codeblockId];
+    if (state && state.mentorId === socket.id) {
+      console.log(`Mentor left ${codeblockId}, resetting room`);
+      io.to(codeblockId).emit("mentorLeft");
+      state.mentorId = null;
+      const codeblock = await CodeBlock.findById(codeblockId);
+      state.currentCode = codeblock.initialCode;
+      state.messages = []; // Clear chat messages
+      console.log(
+        `Room ${codeblockId} reset: messages cleared, currentCode: ${state.currentCode}`
+      );
+    }
+    socket.leave(codeblockId); // Remove socket from the room
+  });
+
   socket.on("disconnect", async () => {
     console.log(`Client ${socket.id} disconnected`);
     for (const codeblockId in codeblockStates) {
       const state = codeblockStates[codeblockId];
       if (state.mentorId === socket.id) {
-        console.log(`Mentor left ${codeblockId}, notifying room`);
+        console.log(
+          `Mentor left ${codeblockId} via disconnect, resetting room`
+        );
         io.to(codeblockId).emit("mentorLeft");
         state.mentorId = null;
         const codeblock = await CodeBlock.findById(codeblockId);
         state.currentCode = codeblock.initialCode;
+        state.messages = [];
+        console.log(
+          `Room ${codeblockId} reset: messages cleared, currentCode: ${state.currentCode}`
+        );
       } else {
         const room = io.sockets.adapter.rooms.get(codeblockId);
         const numClients = room ? room.size : 0;

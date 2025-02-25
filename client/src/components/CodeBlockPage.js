@@ -1,65 +1,84 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import io from 'socket.io-client';
-import CodeMirror from '@uiw/react-codemirror';
-import { javascript } from '@codemirror/lang-javascript';
+import React, { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import io from "socket.io-client";
+import CodeMirror from "@uiw/react-codemirror";
+import { javascript } from "@codemirror/lang-javascript";
 
-// Connect to server (update URL for deployment)
-const socket = io('http://localhost:5000');
+const socket = io("http://localhost:5000");
 
 function CodeBlockPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [role, setRole] = useState('');
-  const [code, setCode] = useState('');
+  const [role, setRole] = useState("");
+  const [code, setCode] = useState("");
   const [numStudents, setNumStudents] = useState(0);
   const [showSmiley, setShowSmiley] = useState(false);
+  const [messages, setMessages] = useState([]); // Store chat messages
+  const [chatInput, setChatInput] = useState(""); // Input field value
+  const messagesEndRef = useRef(null); // For auto-scrolling
 
   useEffect(() => {
-    // Join the code block room
-    socket.emit('join', id);
+    socket.emit("join", id);
 
-    // Initialize with role and code
-    socket.on('init', ({ role, currentCode, numStudents }) => {
+    socket.on("init", ({ role, currentCode, numStudents, messages }) => {
       setRole(role);
       setCode(currentCode);
       setNumStudents(numStudents);
+      setMessages(messages || []); // Load initial messages
     });
 
-    // Update code from other users
-    socket.on('codeUpdated', newCode => setCode(newCode));
+    socket.on("codeUpdated", (newCode) => setCode(newCode));
 
-    // Update student count
-    socket.on('updateStudents', num => setNumStudents(num));
+    socket.on("updateStudents", (num) => setNumStudents(num));
 
-    // Show smiley when solution matches
-    socket.on('solutionMatched', () => setShowSmiley(true));
+    socket.on("solutionMatched", () => setShowSmiley(true));
 
-    // Redirect to lobby if mentor leaves
-    socket.on('mentorLeft', () => {
-      alert('Mentor has left. Returning to lobby.');
-      navigate('/');
+    socket.on("mentorLeft", () => {
+      alert("Mentor has left. Returning to lobby.");
+      navigate("/");
     });
 
-    // Cleanup on unmount
+    socket.on("newMessage", (message) => {
+      setMessages((prev) => [...prev, message]);
+    });
+
     return () => {
-      socket.off('init');
-      socket.off('codeUpdated');
-      socket.off('updateStudents');
-      socket.off('solutionMatched');
-      socket.off('mentorLeft');
+      socket.off("init");
+      socket.off("codeUpdated");
+      socket.off("updateStudents");
+      socket.off("solutionMatched");
+      socket.off("mentorLeft");
+      socket.off("newMessage");
     };
   }, [id, navigate]);
 
+  useEffect(() => {
+    // Auto-scroll to the latest message
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   const handleCodeChange = (value) => {
-    if (role === 'student') {
+    if (role === "student") {
       setCode(value);
-      socket.emit('updateCode', { codeblockId: id, newCode: value });
+      socket.emit("updateCode", { codeblockId: id, newCode: value });
+    }
+  };
+
+  const handleSendMessage = () => {
+    if (chatInput.trim()) {
+      socket.emit("sendMessage", { codeblockId: id, message: chatInput });
+      setChatInput(""); // Clear input after sending
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSendMessage();
     }
   };
 
   return (
-    <div style={{ padding: '20px' }}>
+    <div style={{ padding: "20px" }}>
       <h2>Code Block</h2>
       <p>Role: {role}</p>
       <p>Number of Students: {numStudents}</p>
@@ -68,14 +87,48 @@ function CodeBlockPage() {
         height="200px"
         extensions={[javascript()]}
         onChange={handleCodeChange}
-        readOnly={role === 'mentor'}
+        readOnly={role === "mentor"}
         theme="dark"
       />
       {showSmiley && (
-        <div style={{ fontSize: '50px', textAlign: 'center', marginTop: '20px' }}>
+        <div
+          style={{ fontSize: "50px", textAlign: "center", marginTop: "20px" }}
+        >
           😊
         </div>
       )}
+      <div style={{ marginTop: "20px" }}>
+        <h3>Chat</h3>
+        <div
+          style={{
+            maxHeight: "150px",
+            overflowY: "auto",
+            border: "1px solid #ccc",
+            padding: "10px",
+            marginBottom: "10px",
+          }}
+        >
+          {messages.map((msg, index) => (
+            <div key={index}>
+              <strong>
+                {msg.id === socket.id ? "You" : msg.id.slice(0, 4)}:
+              </strong>{" "}
+              {msg.message}{" "}
+              <em>({new Date(msg.timestamp).toLocaleTimeString()})</em>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+        <input
+          type="text"
+          value={chatInput}
+          onChange={(e) => setChatInput(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Type a message..."
+          style={{ width: "70%", marginRight: "10px" }}
+        />
+        <button onClick={handleSendMessage}>Send</button>
+      </div>
     </div>
   );
 }

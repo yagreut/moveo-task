@@ -1,26 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import "../styles/Lobby.css"; // Updated import path
 
 function Lobby() {
   const [codeblocks, setCodeblocks] = useState([]);
 
   useEffect(() => {
-    // Fetch code blocks from server
     fetch("http://localhost:5000/codeblocks")
       .then((res) => res.json())
       .then((data) => setCodeblocks(data));
   }, []);
 
   return (
-    <div style={{ padding: "20px", textAlign: "center" }}>
-      <h1>Choose Code Block</h1>
-      <ul style={{ listStyle: "none", padding: 0 }}>
+    <div className="lobby-container">
+      <h1 className="lobby-title">Choose Code Block</h1>
+      <ul className="codeblock-list">
         {codeblocks.map((cb) => (
-          <li key={cb._id} style={{ margin: "10px" }}>
-            <Link
-              to={`/codeblock/${cb._id}`}
-              style={{ textDecoration: "none", color: "#007bff" }}
-            >
+          <li key={cb._id} className="codeblock-item">
+            <Link to={`/codeblock/${cb._id}`} className="codeblock-link">
               {cb.name}
             </Link>
           </li>

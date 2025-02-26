@@ -1,5 +1,7 @@
 # CodingSync
 
+[Live Demo](https://moveo-task-frontend-1gbw.onrender.com/)
+
 CodingSync is a real-time web application designed for coding collaboration, enabling mentors (e.g., JavaScript lecturer Tom) and students to work together on code blocks.
 
 The app features a sleek, dark-themed UI with role-based access for mentors (read-only) and students (editable), supporting live code updates, chat functionality, and solution matching with a celebratory smiley face.

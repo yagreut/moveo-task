@@ -32,8 +32,6 @@ app.get("/codeblocks", async (req, res) => {
 });
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
   socket.on("join", async (codeblockId) => {
     socket.join(codeblockId);
 
@@ -74,10 +72,8 @@ io.on("connection", (socket) => {
     const state = codeblockStates[codeblockId];
     state.currentCode = newCode;
 
-    console.log(`Code updated in ${codeblockId}: ${newCode}`);
     io.to(codeblockId).emit("codeUpdated", newCode);
 
-    // Improved normalization: Remove spaces, replace single quotes with double, remove escape characters
     const normalizedStudentCode = newCode
       .replace(/\s/g, "")
       .replace(/'/g, '"')
@@ -86,14 +82,8 @@ io.on("connection", (socket) => {
       .replace(/\s/g, "")
       .replace(/'/g, '"')
       .replace(/\\/g, "");
-    console.log(
-      `Checking solution - Student: "${normalizedStudentCode}", Solution: "${normalizedSolution}"`
-    );
     if (normalizedStudentCode === normalizedSolution) {
-      console.log(`Solution matched for ${codeblockId}, notifying room`);
       io.to(codeblockId).emit("solutionMatched");
-    } else {
-      console.log(`Solution not matched for ${codeblockId}`);
     }
   });
 
@@ -116,7 +106,7 @@ io.on("connection", (socket) => {
       codeblockStates[codeblockId] = {
         mentorId: null,
         currentCode: codeblock.initialCode,
-        solution: codeblock.solution, // Reload solution from DB
+        solution: codeblock.solution,
         messages: [],
       };
     }
@@ -132,7 +122,7 @@ io.on("connection", (socket) => {
         codeblockStates[codeblockId] = {
           mentorId: null,
           currentCode: codeblock.initialCode,
-          solution: codeblock.solution, // Reload solution from DB
+          solution: codeblock.solution,
           messages: [],
         };
       } else {

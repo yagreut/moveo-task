@@ -33,7 +33,6 @@ function CodeBlockPage() {
     socket.on("updateStudents", (num) => setNumStudents(num));
 
     socket.on("solutionMatched", () => {
-      console.log("Solution matched, showing smiley"); // Log here to confirm event fires
       setShowSmiley(true);
     });
 
@@ -80,9 +79,6 @@ function CodeBlockPage() {
       handleSendMessage();
     }
   };
-
-  // Log before rendering to check showSmiley state
-  console.log("Rendering CodeBlockPage, showSmiley:", showSmiley);
 
   return (
     <div className="codeblock-container">

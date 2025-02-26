@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
-import "../styles/CodeBlockPage.css"; // Updated import path
+import "../styles/CodeBlockPage.css";
 
 const socket = io("http://localhost:5000");
 
@@ -32,7 +32,10 @@ function CodeBlockPage() {
 
     socket.on("updateStudents", (num) => setNumStudents(num));
 
-    socket.on("solutionMatched", () => setShowSmiley(true));
+    socket.on("solutionMatched", () => {
+      console.log("Solution matched, showing smiley"); // Log here to confirm event fires
+      setShowSmiley(true);
+    });
 
     socket.on("mentorLeft", () => {
       alert("Mentor has left. Returning to lobby.");
@@ -77,6 +80,9 @@ function CodeBlockPage() {
       handleSendMessage();
     }
   };
+
+  // Log before rendering to check showSmiley state
+  console.log("Rendering CodeBlockPage, showSmiley:", showSmiley);
 
   return (
     <div className="codeblock-container">

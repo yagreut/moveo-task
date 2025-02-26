@@ -32,8 +32,6 @@ app.get("/codeblocks", async (req, res) => {
 });
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
-
   socket.on("join", async (codeblockId) => {
     socket.join(codeblockId);
 
@@ -60,9 +58,6 @@ io.on("connection", (socket) => {
 
     const numStudents = state.mentorId ? numClients - 1 : numClients;
 
-    console.log(
-      `User ${socket.id} joined ${codeblockId} as ${role}, students: ${numStudents}`
-    );
     socket.emit("init", {
       role,
       currentCode: state.currentCode,
@@ -79,17 +74,20 @@ io.on("connection", (socket) => {
 
     io.to(codeblockId).emit("codeUpdated", newCode);
 
-    const normalizedStudentCode = newCode.replace(/\s/g, "").replace(/'/g, '"');
+    const normalizedStudentCode = newCode
+      .replace(/\s/g, "")
+      .replace(/'/g, '"')
+      .replace(/\\/g, "");
     const normalizedSolution = state.solution
       .replace(/\s/g, "")
-      .replace(/'/g, '"');
+      .replace(/'/g, '"')
+      .replace(/\\/g, "");
     if (normalizedStudentCode === normalizedSolution) {
       io.to(codeblockId).emit("solutionMatched");
     }
   });
 
   socket.on("sendMessage", ({ codeblockId, message }) => {
-    console.log(`Message in ${codeblockId} from ${socket.id}: ${message}`);
     const state = codeblockStates[codeblockId];
     const chatMessage = {
       id: socket.id,
@@ -101,43 +99,36 @@ io.on("connection", (socket) => {
   });
 
   socket.on("leaveRoom", async (codeblockId) => {
-    console.log(`Client ${socket.id} leaving room ${codeblockId}`);
     const state = codeblockStates[codeblockId];
     if (state && state.mentorId === socket.id) {
-      console.log(`Mentor left ${codeblockId}, resetting room`);
       io.to(codeblockId).emit("mentorLeft");
-      state.mentorId = null;
       const codeblock = await CodeBlock.findById(codeblockId);
-      state.currentCode = codeblock.initialCode;
-      state.messages = []; // Clear chat messages
-      console.log(
-        `Room ${codeblockId} reset: messages cleared, currentCode: ${state.currentCode}`
-      );
+      codeblockStates[codeblockId] = {
+        mentorId: null,
+        currentCode: codeblock.initialCode,
+        solution: codeblock.solution,
+        messages: [],
+      };
     }
-    socket.leave(codeblockId); // Remove socket from the room
+    socket.leave(codeblockId);
   });
 
   socket.on("disconnect", async () => {
-    console.log(`Client ${socket.id} disconnected`);
     for (const codeblockId in codeblockStates) {
       const state = codeblockStates[codeblockId];
       if (state.mentorId === socket.id) {
-        console.log(
-          `Mentor left ${codeblockId} via disconnect, resetting room`
-        );
         io.to(codeblockId).emit("mentorLeft");
-        state.mentorId = null;
         const codeblock = await CodeBlock.findById(codeblockId);
-        state.currentCode = codeblock.initialCode;
-        state.messages = [];
-        console.log(
-          `Room ${codeblockId} reset: messages cleared, currentCode: ${state.currentCode}`
-        );
+        codeblockStates[codeblockId] = {
+          mentorId: null,
+          currentCode: codeblock.initialCode,
+          solution: codeblock.solution,
+          messages: [],
+        };
       } else {
         const room = io.sockets.adapter.rooms.get(codeblockId);
         const numClients = room ? room.size : 0;
         const numStudents = state.mentorId ? numClients - 1 : numClients;
-        console.log(`Updating ${codeblockId} students: ${numStudents}`);
         io.to(codeblockId).emit("updateStudents", numStudents);
       }
     }

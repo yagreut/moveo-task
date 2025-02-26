@@ -5,7 +5,7 @@ import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import "../styles/CodeBlockPage.css";
 
-const socket = io("http://localhost:5000");
+const socket = io("https://moveo-task-backend-y1t6.onrender.com");
 
 function CodeBlockPage() {
   const { id } = useParams();

@@ -6,7 +6,7 @@ function Lobby() {
   const [codeblocks, setCodeblocks] = useState([]);
 
   useEffect(() => {
-    fetch("http://localhost:5000/codeblocks")
+    fetch("https://moveo-task-backend-y1t6.onrender.com/codeblocks")
       .then((res) => res.json())
       .then((data) => setCodeblocks(data));
   }, []);

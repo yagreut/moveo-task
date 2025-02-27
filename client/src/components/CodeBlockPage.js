@@ -1,3 +1,10 @@
+/**
+ * CodeBlockPage component for real-time coding collaboration within a specific code block.
+ * Handles role assignment (mentor/student), live code updates, chat functionality,
+ * and solution matching with a smiley face.
+ * @component
+ */
+
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
@@ -5,46 +12,62 @@ import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import "../styles/CodeBlockPage.css";
 
-const socket = io("http://localhost:5000");
+// Initialize Socket.io connection to the backend
+const socket = io("https://moveo-task-backend.onrender.com");
 
+/**
+ * Manages the state and real-time interactions for a code block page.
+ * @param {Object} props - Component props (none directly passed, uses useParams).
+ * @returns {JSX.Element} The rendered code block page UI.
+ */
 function CodeBlockPage() {
-  const { id } = useParams();
+  const { id } = useParams(); // Get code block ID from URL
   const navigate = useNavigate();
-  const [role, setRole] = useState("");
-  const [code, setCode] = useState("");
-  const [numStudents, setNumStudents] = useState(0);
-  const [showSmiley, setShowSmiley] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [chatInput, setChatInput] = useState("");
-  const messagesEndRef = useRef(null);
+  const [role, setRole] = useState(""); // User role (mentor/student)
+  const [code, setCode] = useState(""); // Current code in the editor
+  const [numStudents, setNumStudents] = useState(0); // Number of students in the room
+  const [showSmiley, setShowSmiley] = useState(false); // Show smiley on solution match
+  const [messages, setMessages] = useState([]); // Chat messages
+  const [chatInput, setChatInput] = useState(""); // Chat input field
+  const messagesEndRef = useRef(null); // Reference for auto-scrolling chat
 
+  /**
+   * Sets up Socket.io events on component mount and cleans up on unmount.
+   * Handles initialization, code updates, student counts, solution matching,
+   * mentor leaving, and chat messages.
+   */
   useEffect(() => {
-    socket.emit("join", id);
+    socket.emit("join", id); // Join the code block room
 
+    // Initialize with role, code, students, and messages
     socket.on("init", ({ role, currentCode, numStudents, messages }) => {
       setRole(role);
-      setCode(currentCode);
+      setCode(currentCode || ""); // Default to empty if no code
       setNumStudents(numStudents);
       setMessages(messages || []);
     });
 
+    // Update code in real-time
     socket.on("codeUpdated", (newCode) => setCode(newCode));
 
+    // Update student count in real-time
     socket.on("updateStudents", (num) => setNumStudents(num));
 
-    socket.on("solutionMatched", () => {
-      setShowSmiley(true);
-    });
+    // Show smiley when solution matches
+    socket.on("solutionMatched", () => setShowSmiley(true));
 
+    // Handle mentor leaving, redirecting to lobby
     socket.on("mentorLeft", () => {
       alert("Mentor has left. Returning to lobby.");
       navigate("/");
     });
 
+    // Handle new chat messages
     socket.on("newMessage", (message) => {
       setMessages((prev) => [...prev, message]);
     });
 
+    // Clean up Socket.io events and leave room on unmount
     return () => {
       socket.emit("leaveRoom", id);
       socket.off("init");
@@ -56,10 +79,17 @@ function CodeBlockPage() {
     };
   }, [id, navigate]);
 
+  /**
+   * Auto-scrolls chat to the latest message when messages update.
+   */
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  /**
+   * Handles changes to the code editor, emitting updates if the user is a student.
+   * @param {string} value - The new code value from the editor.
+   */
   const handleCodeChange = (value) => {
     if (role === "student") {
       setCode(value);
@@ -67,6 +97,9 @@ function CodeBlockPage() {
     }
   };
 
+  /**
+   * Sends a chat message when the user submits it.
+   */
   const handleSendMessage = () => {
     if (chatInput.trim()) {
       socket.emit("sendMessage", { codeblockId: id, message: chatInput });
@@ -74,12 +107,17 @@ function CodeBlockPage() {
     }
   };
 
+  /**
+   * Sends a chat message when the user presses Enter.
+   * @param {KeyboardEvent} e - The keyboard event.
+   */
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
       handleSendMessage();
     }
   };
 
+  // Render the code block page UI
   return (
     <div className="codeblock-container">
       <div className="editor-section">
